@@ -1,0 +1,14 @@
+This is a tool for converting kml files from the MyTracks android app
+to Lightroom compatible gpx files.
+
+Usage:
+* Drag'n'drop files to convert on to the window
+
+
+NOTE: This tool strips away all information not related to pure position
+data used by Lightroom, so it is not a general purpose kml to gpx converter.
+
+
+Links:
+http://www.google.com/mobile/mytracks/
+http://www.adobe.com/no/products/photoshop-lightroom.html
