@@ -41,9 +41,9 @@ namespace KmlToGpxConverter
                 if (!e.MoveNext()) break;
 
                 var t = ((XmlNode)e.Current).InnerText.Split(new[] { ' ' });
-                if (t.Length != 3) break;
+                if (t.Length < 2) continue;
 
-                retVal.Add(new GpsTimePoint(t[0], t[1], t[2], utcTimepoint));
+                retVal.Add(new GpsTimePoint(t[0], t[1], t.ElementAtOrDefault(2), utcTimepoint));
             }
 
             return retVal;
