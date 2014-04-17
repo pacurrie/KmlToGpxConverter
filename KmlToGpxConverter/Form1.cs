@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -81,25 +82,47 @@ namespace KmlToGpxConverter
             {
                 try
                 {
-                    IEnumerable<GpsTimePoint> gpsPoints;
-                    if (args.elevationAdjustment.HasValue)
+                    List<GpsTimePoint> gpsPoints = new List<GpsTimePoint>();
+
+                    // Read raw data
+                    if (Path.GetExtension(file) == ".kmz")
                     {
-                        if (args.elevationAdjustment == Decimal.Zero)
+                        var archive = ZipFile.OpenRead(file);
+                        foreach (var entry in archive.Entries)
                         {
-                            gpsPoints = KmlReader.ReadFile(file);
-                        }
-                        else
-                        {
-                            gpsPoints = KmlReader.ReadFile(file).Select(x => GpsTimePointMutator.AdjustElevation(x, args.elevationAdjustment.Value));
+                            var dstFile = System.IO.Path.GetTempFileName();
+                            try
+                            {
+                                File.Delete(dstFile);
+                                entry.ExtractToFile(dstFile);
+                                gpsPoints.AddRange(KmlReader.ReadFile(dstFile));
+                            }
+                            finally
+                            {
+                                File.Delete(dstFile);
+                            }
                         }
                     }
                     else
                     {
-                        gpsPoints = KmlReader.ReadFile(file).Select(x => GpsTimePointMutator.StripElevation(x));
+                        gpsPoints.AddRange(KmlReader.ReadFile(file));
                     }
 
-                    var outFileName = GetAvailableFilename(file, KmlReader.FileExtension, GpxWriter.FileExtension);
+                    // Filter data
+                    if (args.elevationAdjustment.HasValue)
+                    {
+                        if (args.elevationAdjustment != Decimal.Zero)
+                        {
+                            gpsPoints = gpsPoints.Select(x => GpsTimePointMutator.AdjustElevation(x, args.elevationAdjustment.Value)).ToList();
+                        }
+                    }
+                    else
+                    {
+                        gpsPoints = gpsPoints.Select(x => GpsTimePointMutator.StripElevation(x)).ToList();
+                    }
 
+                    // Output data
+                    var outFileName = GetAvailableFilename(file, GpxWriter.FileExtension);
                     GpxWriter.WriteFile(outFileName, gpsPoints);
                 }
                 catch (Exception ex)
@@ -114,15 +137,12 @@ namespace KmlToGpxConverter
             }
         }
 
-        private string GetAvailableFilename(string origFileName, string origExtension, string newExtension)
+        private string GetAvailableFilename(string origFileName, string newExtension)
         {
             var baseFileName = Path.GetFullPath(origFileName);
 
-            var origExtensionTrimmed = origExtension.TrimStart(new[]{'.'});
-            if (baseFileName.EndsWith(origExtensionTrimmed, StringComparison.InvariantCultureIgnoreCase))
-            {
-                baseFileName = baseFileName.Substring(0, baseFileName.Length - origExtensionTrimmed.Length - 1);
-            }
+            var origExtensionTrimmed = Path.GetExtension(baseFileName).TrimStart(new[]{'.'});
+            baseFileName = baseFileName.Substring(0, baseFileName.Length - origExtensionTrimmed.Length - 1);
 
             string newFile;
             var count = 0;

@@ -9,8 +9,6 @@ namespace KmlToGpxConverter
 {
     internal static class KmlReader
     {
-        public const string FileExtension = "kml";
-
         public static IList<GpsTimePoint> ReadFile(string filename)
         {
             XmlDocument xmlDoc = new XmlDocument();
